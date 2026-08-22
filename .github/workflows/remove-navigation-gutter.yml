@@ -1,0 +1,32 @@
+name: Remove collapsed navigation gutter
+on:
+  push:
+    paths:
+      - .github/workflows/remove-navigation-gutter.yml
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove residual gutter
+        shell: python
+        run: |
+          from pathlib import Path
+          old = ".shell.nav-collapsed .side{transform:translateX(-100%);opacity:0;pointer-events:none}"
+          new = ".shell.nav-collapsed .side{padding-left:0;padding-right:0;border:0;overflow:hidden;transform:translateX(-100%);opacity:0;pointer-events:none}"
+          for filename in ("programming.html", "info.html"):
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+              if text.count(old) != 1:
+                  raise SystemExit(f"{filename}: expected one collapsed navigation rule")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          Path(".github/workflows/remove-navigation-gutter.yml").unlink()
+      - name: Commit correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add programming.html info.html .github/workflows/remove-navigation-gutter.yml
+          git commit -m "Remove collapsed navigation gutter"
+          git push
