@@ -1,0 +1,69 @@
+name: Apply navigation redesign
+on:
+  push:
+    paths: ['.github/workflows/apply-navigation-redesign.yml']
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply focused interface changes
+        shell: python
+        run: |
+          from pathlib import Path
+          nav_css=".nav-toggle{width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto;border:1px solid #ffffff45;border-radius:9px;background:#ffffff0c;color:#fff;cursor:pointer;font-size:18px}.nav-toggle:hover{background:#ffffff18}.top-left{display:flex;align-items:center;gap:11px}.shell,.side{transition:grid-template-columns .2s ease,transform .2s ease,opacity .2s ease}.shell.nav-collapsed{grid-template-columns:0 minmax(0,1fr)}.shell.nav-collapsed .side{transform:translateX(-100%);opacity:0;pointer-events:none}.main{transition:padding .2s ease}.shell.nav-collapsed .main{padding-left:18px}.home-label-short{display:none}"
+          old_mobile="@media(max-width:820px){.top{height:60px;padding:0 12px}.brand small{display:none}.shell{display:block;min-height:calc(100vh - 60px)}.side{position:sticky;top:60px;height:auto;z-index:15;border-right:0;border-bottom:1px solid var(--line);padding:8px;background:#fff}.side-title,.menu,.tip{display:none}.mobile-menu{display:block;width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fff;font-weight:800}.main{padding:8px}.viewer-head{padding:3px 2px}.viewer-head h2{font-size:15px}.viewer-head p{display:none}.actions .print{display:none}iframe,.loader{height:calc(100vh - 125px)}}"
+          new_mobile="@media(max-width:820px){.top{height:60px;padding:0 12px}.brand small{display:none}.brand-mark{display:none}.shell{display:block;min-height:calc(100vh - 60px)}.side{position:sticky;top:60px;height:auto;z-index:15;border-right:0;border-bottom:1px solid var(--line);padding:8px;background:#fff}.shell.nav-collapsed .side{display:none}.side-title,.menu,.tip{display:none}.mobile-menu{display:block;width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fff;font-weight:800}.main{padding:8px}.shell.nav-collapsed .main{padding-left:8px}.viewer-head{padding:3px 2px}.viewer-head h2{font-size:15px}.viewer-head p{display:none}.actions .print{display:none}.home-label{display:none}.home-label-short{display:inline}iframe,.loader{height:calc(100vh - 125px)}}"
+          nav_js="const shell=document.getElementById('shell'),navToggle=document.getElementById('navToggle');function setNav(collapsed){shell.classList.toggle('nav-collapsed',collapsed);navToggle.setAttribute('aria-expanded',String(!collapsed));navToggle.setAttribute('aria-label',collapsed?'教材メニューを開く':'教材メニューを閉じる');sessionStorage.setItem('info1_course_nav',collapsed?'closed':'open')}const savedNav=sessionStorage.getItem('info1_course_nav');setNav(savedNav?savedNav==='closed':matchMedia('(max-width:1000px)').matches);navToggle.addEventListener('click',()=>setNav(!shell.classList.contains('nav-collapsed')));\n  "
+          pages={
+            "programming.html":("プログラミング","PROGRAMMING"),
+            "info.html":("情報社会・データ活用","GENERAL TOPICS")
+          }
+          for filename,(subtitle,_) in pages.items():
+              p=Path(filename); text=p.read_text(encoding="utf-8")
+              marker="[hidden]{display:none!important}"
+              if nav_css not in text:
+                  if marker not in text: raise SystemExit(f"{filename}: hidden marker missing")
+                  text=text.replace(marker,marker+"\n"+nav_css,1)
+              if old_mobile in text: text=text.replace(old_mobile,new_mobile,1)
+              old=f'<header class="top"><div class="brand"><div class="brand-mark">Ⅰ</div><div><b>情報Ⅰ 共通テスト演習</b><small>{subtitle}</small></div></div><a class="home" href="index.html">教材一覧</a></header>'
+              new=f'<header class="top"><div class="top-left"><button class="nav-toggle" id="navToggle" type="button" aria-label="教材メニューを閉じる" aria-expanded="true">☰</button><div class="brand"><div class="brand-mark">Ⅰ</div><div><b>情報Ⅰ 共通テスト演習</b><small>{subtitle}</small></div></div></div><a class="home" href="index.html"><span class="home-label">教材一覧</span><span class="home-label-short">一覧</span></a></header>'
+              if old in text: text=text.replace(old,new,1)
+              text=text.replace('<div class="shell"><aside class="side">','<div class="shell" id="shell"><aside class="side" id="courseNav">',1)
+              hook="document.querySelectorAll('.item').forEach"
+              if nav_js.strip() not in text:
+                  if hook not in text: raise SystemExit(f"{filename}: script hook missing")
+                  text=text.replace(hook,nav_js+hook,1)
+              for required in ('id="navToggle"','id="shell"',"nav-collapsed"):
+                  if required not in text: raise SystemExit(f"{filename}: {required} missing")
+              p.write_text(text,encoding="utf-8")
+          p=Path("dncl-lab.html");text=p.read_text(encoding="utf-8")
+          reps=[
+            (".top small{opacity:.85}",".top small{opacity:.85}.top-actions{display:flex;align-items:center;gap:12px}.exercise-toggle{border:1px solid #ffffff45;border-radius:8px;background:#ffffff0c;color:#fff;padding:8px 11px;font-weight:800;cursor:pointer}"),
+            (".workspace{display:grid;grid-template-columns:270px 1fr;min-height:calc(100vh - 112px)}",".workspace{display:grid;grid-template-columns:270px 1fr;min-height:calc(100vh - 112px);transition:grid-template-columns .2s ease}.workspace.exercise-collapsed{grid-template-columns:0 1fr}"),
+            (".left{padding:20px 16px;background:#fff;border-right:1px solid var(--line)}",".left{padding:20px 16px;background:#fff;border-right:1px solid var(--line);transition:transform .2s ease,opacity .2s ease;overflow:hidden}.workspace.exercise-collapsed .left{transform:translateX(-100%);opacity:0;pointer-events:none}"),
+            ("@media(max-width:940px){.workspace{grid-template-columns:1fr}.left{border-right:0;border-bottom:1px solid var(--line)}","@media(max-width:940px){.workspace{display:block}.workspace.exercise-collapsed .left{display:none}.left{border-right:0;border-bottom:1px solid var(--line)}"),
+            ("@media(max-width:600px){.top{padding:12px 14px}.top>small{display:none}","@media(max-width:600px){.top{padding:12px 14px}.top-actions>small{display:none}.exercise-toggle{padding:7px 9px;font-size:12px}"),
+            ('<header class="top"><div><h1>DNCL ステップ実行</h1><small>Information I / Programming</small></div><small>情報Ⅰ 共通テスト演習</small></header>','<header class="top"><div><h1>DNCL ステップ実行</h1><small>Information I / Programming</small></div><div class="top-actions"><button class="exercise-toggle" id="exerciseToggle" type="button" aria-expanded="true">問題一覧を閉じる</button><small>情報Ⅰ 共通テスト演習</small></div></header>'),
+            ('<main class="workspace">','<main class="workspace" id="workspace">')
+          ]
+          for old,new in reps:
+              if old in text:text=text.replace(old,new,1)
+          lab_js="const workspaceEl=document.getElementById('workspace'),exerciseToggle=document.getElementById('exerciseToggle');function setExerciseNav(collapsed){workspaceEl.classList.toggle('exercise-collapsed',collapsed);exerciseToggle.textContent=collapsed?'問題一覧を開く':'問題一覧を閉じる';exerciseToggle.setAttribute('aria-expanded',String(!collapsed));sessionStorage.setItem('dncl_exercise_nav',collapsed?'closed':'open')}const exerciseNavState=sessionStorage.getItem('dncl_exercise_nav');setExerciseNav(exerciseNavState?exerciseNavState==='closed':matchMedia('(max-width:1100px)').matches);exerciseToggle.onclick=()=>setExerciseNav(!workspaceEl.classList.contains('exercise-collapsed'));\n"
+          if lab_js.strip() not in text:
+              hook="check.onclick=()=>"
+              if hook not in text:raise SystemExit("dncl hook missing")
+              text=text.replace(hook,lab_js+hook,1)
+          for required in ('id="exerciseToggle"','id="workspace"',"exercise-collapsed"):
+              if required not in text:raise SystemExit(f"dncl-lab: {required} missing")
+          p.write_text(text,encoding="utf-8")
+          Path(".github/workflows/apply-navigation-redesign.yml").unlink()
+      - name: Commit redesign
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add programming.html info.html dncl-lab.html .github/workflows/apply-navigation-redesign.yml
+          git commit -m "Add collapsible course navigation"
+          git push
