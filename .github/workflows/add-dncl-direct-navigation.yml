@@ -16,40 +16,24 @@ jobs:
           from pathlib import Path
           path=Path("dncl-lab.html")
           text=path.read_text(encoding="utf-8")
-          replacements=[
-            (
-              ".task-nav:disabled{opacity:.38;cursor:default}.badge{",
-              ".task-nav:disabled{opacity:.38;cursor:default}.quick-nav{display:flex;align-items:center;gap:4px;padding:3px;border:1px solid var(--line);border-radius:9px;background:#fff}.quick-nav button{min-width:30px;height:30px;border:0;border-radius:6px;background:transparent;color:#4b5870;font-weight:800;cursor:pointer}.quick-nav button:hover{background:#edf4fb}.quick-nav button.active{background:var(--navy);color:#fff}.badge{",
-              "desktop CSS"
-            ),
-            (
-              ".task-actions{justify-content:flex-start;margin-top:9px}.task-nav{padding:8px 10px}.badge{",
-              ".task-actions{justify-content:flex-start;margin-top:9px}.task-nav{padding:8px 10px}.quick-nav{order:3;width:100%;overflow-x:auto}.quick-nav button{flex:1;min-width:34px}.badge{",
-              "mobile CSS"
-            ),
-            (
-              '<section class="main"><div class="taskbar"><div><h2 id="taskTitle"></h2><p class="question" id="question"></p></div><div class="task-actions"><button class="task-nav" id="prevExerciseMain" type="button">← 前の問題</button><span class="badge" id="concept"></span><button class="task-nav" id="nextExerciseMain" type="button">次の問題 →</button></div></div>',
-              '<section class="main"><div class="taskbar"><div><h2 id="taskTitle"></h2><p class="question" id="question"></p></div><div class="task-actions"><span class="badge" id="concept"></span><button class="task-nav" id="prevExerciseMain" type="button">← 前の問題</button><div class="quick-nav" id="quickNav" aria-label="問題番号"></div><button class="task-nav" id="nextExerciseMain" type="button">次の問題 →</button></div></div>',
-              "HTML"
-            ),
-            (
-              "function chooseExercise(i){ei=i;step=0;pred='';clearValidation();stop();render();if(window.matchMedia('(max-width:940px)').matches)document.querySelector('.main')?.scrollIntoView({block:'start'});else document.querySelector('.exercise.active')?.scrollIntoView({block:'nearest'})}",
-              "function returnToLabTop(){requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'auto'}))}\nfunction chooseExercise(i){ei=i;step=0;pred='';clearValidation();stop();render();returnToLabTop()}",
-              "scroll JS"
-            )
+
+          pairs=[
+            (".task-nav:disabled{opacity:.38;cursor:default}.badge{",".task-nav:disabled{opacity:.38;cursor:default}.quick-nav{display:flex;align-items:center;gap:4px;padding:3px;border:1px solid var(--line);border-radius:9px;background:#fff}.quick-nav button{min-width:30px;height:30px;border:0;border-radius:6px;background:transparent;color:#4b5870;font-weight:800;cursor:pointer}.quick-nav button:hover{background:#edf4fb}.quick-nav button.active{background:var(--navy);color:#fff}.badge{"),
+            (".task-actions{justify-content:flex-start;margin-top:9px}.task-nav{padding:8px 10px}.badge{",".task-actions{justify-content:flex-start;margin-top:9px}.task-nav{padding:8px 10px}.quick-nav{order:3;width:100%;overflow-x:auto}.quick-nav button{flex:1;min-width:34px}.badge{"),
+            ('<section class="main"><div class="taskbar"><div><h2 id="taskTitle"></h2><p class="question" id="question"></p></div><div class="task-actions"><button class="task-nav" id="prevExerciseMain" type="button">← 前の問題</button><span class="badge" id="concept"></span><button class="task-nav" id="nextExerciseMain" type="button">次の問題 →</button></div></div>','<section class="main"><div class="taskbar"><div><h2 id="taskTitle"></h2><p class="question" id="question"></p></div><div class="task-actions"><span class="badge" id="concept"></span><button class="task-nav" id="prevExerciseMain" type="button">← 前の問題</button><div class="quick-nav" id="quickNav" aria-label="問題番号"></div><button class="task-nav" id="nextExerciseMain" type="button">次の問題 →</button></div></div>'),
+            ("function chooseExercise(i){ei=i;step=0;pred='';clearValidation();stop();render();if(window.matchMedia('(max-width:940px)').matches)document.querySelector('.main')?.scrollIntoView({block:'start'});else document.querySelector('.exercise.active')?.scrollIntoView({block:'nearest'})}","function returnToLabTop(){requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'auto'}))}\nfunction chooseExercise(i){ei=i;step=0;pred='';clearValidation();stop();render();returnToLabTop()}")
           ]
-          for old,new,label in replacements:
-              if text.count(old)!=1:
-                  raise SystemExit(f"{label}: expected one match, found {text.count(old)}")
+          for old,new in pairs:
+              if old not in text: raise SystemExit("required source fragment missing")
               text=text.replace(old,new,1)
 
-          old_nav="function nav(){tabs.innerHTML=lessons.map((l,i)=>`<button class=\"tab ${i===li?'active':''}\" data-i=\"${i}\">第${i+1}回　${l.title}</button>`).join('');tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{li=+b.dataset.i;ei=0;step=0;pred='';clearValidation();stop();render()});exerciseList.innerHTML=lessons[li].items.map((x,i)=>`<button class=\"exercise ${i===ei?'active':''}\" data-i=\"${i}\"><strong>${i+1}. ${x.title}</strong><span>${x.concept}</span></button>`).join('');exerciseList.querySelectorAll('button').forEach(b=>b.onclick=()=>chooseExercise(+b.dataset.i));const atFirst=ei===0,atLast=ei===lessons[li].items.length-1;[['#prevExercise',atFirst,ei-1],['#prevExerciseMain',atFirst,ei-1],['#nextExercise',atLast,ei+1],['#nextExerciseMain',atLast,ei+1]].forEach(([selector,disabled,target])=>{const button=\$(selector);button.disabled=disabled;button.onclick=()=>chooseExercise(target)})}"
-          new_nav="function nav(){tabs.innerHTML=lessons.map((l,i)=>`<button class=\"tab ${i===li?'active':''}\" data-i=\"${i}\">第${i+1}回　${l.title}</button>`).join('');tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{li=+b.dataset.i;ei=0;step=0;pred='';clearValidation();stop();render();returnToLabTop()});exerciseList.innerHTML=lessons[li].items.map((x,i)=>`<button class=\"exercise ${i===ei?'active':''}\" data-i=\"${i}\"><strong>${i+1}. ${x.title}</strong><span>${x.concept}</span></button>`).join('');exerciseList.querySelectorAll('button').forEach(b=>b.onclick=()=>chooseExercise(+b.dataset.i));quickNav.innerHTML=lessons[li].items.map((x,i)=>`<button class=\"${i===ei?'active':''}\" type=\"button\" aria-label=\"問題${i+1}へ\" aria-current=\"${i===ei?'true':'false'}\">${i+1}</button>`).join('');quickNav.querySelectorAll('button').forEach((b,i)=>b.onclick=()=>chooseExercise(i));const atFirst=ei===0,atLast=ei===lessons[li].items.length-1;[['#prevExercise',atFirst,ei-1],['#prevExerciseMain',atFirst,ei-1],['#nextExercise',atLast,ei+1],['#nextExerciseMain',atLast,ei+1]].forEach(([selector,disabled,target])=>{const button=\$(selector);button.disabled=disabled;button.onclick=()=>chooseExercise(target)})}"
-          if text.count(old_nav)!=1:
-              raise SystemExit(f"nav JS: expected one match, found {text.count(old_nav)}")
-          text=text.replace(old_nav,new_nav,1)
+          start=text.index("function nav(){")
+          end=text.index("\n",start)
+          new_nav="""function nav(){tabs.innerHTML=lessons.map((l,i)=>`<button class="tab ${i===li?'active':''}" data-i="${i}">第${i+1}回　${l.title}</button>`).join('');tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{li=+b.dataset.i;ei=0;step=0;pred='';clearValidation();stop();render();returnToLabTop()});exerciseList.innerHTML=lessons[li].items.map((x,i)=>`<button class="exercise ${i===ei?'active':''}" data-i="${i}"><strong>${i+1}. ${x.title}</strong><span>${x.concept}</span></button>`).join('');exerciseList.querySelectorAll('button').forEach(b=>b.onclick=()=>chooseExercise(+b.dataset.i));quickNav.innerHTML=lessons[li].items.map((x,i)=>`<button class="${i===ei?'active':''}" type="button" aria-label="問題${i+1}へ" aria-current="${i===ei?'true':'false'}">${i+1}</button>`).join('');quickNav.querySelectorAll('button').forEach((b,i)=>b.onclick=()=>chooseExercise(i));const atFirst=ei===0,atLast=ei===lessons[li].items.length-1;[['#prevExercise',atFirst,ei-1],['#prevExerciseMain',atFirst,ei-1],['#nextExercise',atLast,ei+1],['#nextExerciseMain',atLast,ei+1]].forEach(([selector,disabled,target])=>{const button=$(selector);button.disabled=disabled;button.onclick=()=>chooseExercise(target)})}"""
+          text=text[:start]+new_nav+text[end:]
+
           for token in ('id="quickNav"',"function returnToLabTop()","quickNav.innerHTML"):
-              if token not in text: raise SystemExit("missing "+token)
+              if text.count(token)!=1: raise SystemExit("invalid marker count: "+token)
           path.write_text(text,encoding="utf-8")
           Path(".github/workflows/add-dncl-direct-navigation.yml").unlink()
       - name: Commit update
