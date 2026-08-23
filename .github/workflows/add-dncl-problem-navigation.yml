@@ -1,0 +1,44 @@
+name: Add persistent DNCL problem navigation
+on:
+  push:
+    paths:
+      - .github/workflows/add-dncl-problem-navigation.yml
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add problem navigation
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("dncl-lab.html")
+          text = path.read_text(encoding="utf-8")
+
+          old_css = ".question{margin:0;color:#49556e}.badge{"
+          new_css = ".question{margin:0;color:#49556e}.task-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.task-nav{border:1px solid var(--line);border-radius:8px;background:#fff;padding:7px 10px;color:#34445f;font-weight:800;cursor:pointer}.task-nav:disabled{opacity:.38;cursor:default}.badge{"
+          old_mobile = ".taskbar{display:block}.badge{display:inline-block;margin-top:8px}"
+          new_mobile = ".taskbar{display:block}.task-actions{justify-content:flex-start;margin-top:9px}.task-nav{padding:8px 10px}.badge{display:inline-block}"
+          old_html = '<section class="main"><div class="taskbar"><div><h2 id="taskTitle"></h2><p class="question" id="question"></p></div><span class="badge" id="concept"></span></div>'
+          new_html = '<section class="main"><div class="taskbar"><div><h2 id="taskTitle"></h2><p class="question" id="question"></p></div><div class="task-actions"><button class="task-nav" id="prevExerciseMain" type="button">← 前の問題</button><span class="badge" id="concept"></span><button class="task-nav" id="nextExerciseMain" type="button">次の問題 →</button></div></div>'
+          old_js = "const prev=$('#prevExercise'),nextEx=$('#nextExercise');prev.disabled=ei===0;nextEx.disabled=ei===lessons[li].items.length-1;prev.onclick=()=>chooseExercise(ei-1);nextEx.onclick=()=>chooseExercise(ei+1)"
+          new_js = "const atFirst=ei===0,atLast=ei===lessons[li].items.length-1;[['#prevExercise',atFirst,ei-1],['#prevExerciseMain',atFirst,ei-1],['#nextExercise',atLast,ei+1],['#nextExerciseMain',atLast,ei+1]].forEach(([selector,disabled,target])=>{const button=$(selector);button.disabled=disabled;button.onclick=()=>chooseExercise(target)})"
+
+          for old, new, label in ((old_css,new_css,"desktop CSS"),(old_mobile,new_mobile,"mobile CSS"),(old_html,new_html,"HTML"),(old_js,new_js,"JS")):
+              if text.count(old) != 1:
+                  raise SystemExit(f"{label}: expected one match, found {text.count(old)}")
+              text = text.replace(old,new,1)
+
+          if text.count('id="prevExerciseMain"') != 1 or text.count('id="nextExerciseMain"') != 1:
+              raise SystemExit("main navigation buttons missing or duplicated")
+          path.write_text(text,encoding="utf-8")
+          Path(".github/workflows/add-dncl-problem-navigation.yml").unlink()
+      - name: Commit correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dncl-lab.html .github/workflows/add-dncl-problem-navigation.yml
+          git commit -m "Keep DNCL problem navigation visible"
+          git push
