@@ -1,0 +1,68 @@
+name: Apply portal refinements
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apply-portal-refinements.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.event.head_commit.message == 'Add approved one-time portal refinement workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply approved refinements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64,json
+          def reps(path,pairs):
+              p=Path(path);s=p.read_text()
+              for a,b in pairs:
+                  if a not in s: raise SystemExit(f'{path}: missing {a[:50]}')
+                  s=s.replace(a,b)
+              p.write_text(s)
+          common=[
+            ('.nav-toggle{width:38px;height:38px;','.nav-toggle{width:44px;height:44px;'),
+            ('.action{border:1px solid var(--line);','.action{min-height:44px;border:1px solid var(--line);'),
+            ('id="openBtn">単独表示</button>','id="openBtn">新しいタブで開く</button>')]
+          reps('info.html',common+[
+            ('<title>情報社会・データ活用｜情報Ⅰ 共通テスト演習</title>','<title>情報Ⅰ 基礎・データ活用｜情報Ⅰ 共通テスト演習</title>'),
+            ('<small>情報社会・データ活用</small>','<small>情報Ⅰ 基礎・データ活用</small>'),
+            ('<div class="key">GENERAL TOPICS</div><h1>情報社会・データ活用</h1><p>重要用語・資料読解・データ分析</p>','<div class="key">情報Ⅰ</div><h1>基礎・データ活用</h1><p>用語・資料読解・データ分析</p>'),
+            ('<option value="ig">用語集｜検索・分野別</option>','<option value="ig">用語一覧｜検索・分野別</option>'),
+            ('<option value="iq">知識確認｜範囲・問題数を指定</option>','<option value="iq">知識確認｜回・難易度・問題数を選択</option>'),
+            ('<strong>用語集</strong><i class="tag">検索</i>','<strong>用語一覧</strong><i class="tag">検索</i>'),
+            ('<span>範囲・問題数を指定</span>','<span>回・難易度・問題数を選択</span>'),
+            ('<div class="tip">問題・実行環境・解答をメニューから選択できます。</div>','<div class="tip">問題・用語一覧・知識確認・解答をメニューから選択できます。</div>'),
+            ('resources.ig={label:"用語リファレンス",sub:"定義・設問上の着眼点",type:"用語集",url:"glossary.html"}','resources.ig={label:"用語一覧",sub:"定義・設問上の着眼点",type:"用語",url:"glossary.html"}'),
+            ('resources.ig.label="用語集";resources.iq={label:"知識確認",sub:"範囲・問題数を指定して出題"','resources.ig.label="用語一覧";resources.iq={label:"知識確認",sub:"回・難易度・問題数を選択して出題"')])
+          reps('programming.html',common)
+          p=Path('programming.html');s=p.read_text();a=s.index('const resources=')+len('const resources=');b=s.index(';const storageKey=',a)
+          data=json.loads(s[a:b]);p1=base64.b64decode(data['p1']['data']).decode()
+          p1=p1.replace('今日の合言葉','実行を追うときの原則').replace('長く見えても、上から一行ずつ。','上から一行ずつ、値の変化を記録する。')
+          data['p1']['data']=base64.b64encode(p1.encode()).decode()
+          p.write_text(s[:a]+json.dumps(data,ensure_ascii=False,separators=(',',':'))+s[b:])
+          reps('dncl-lab.html',[
+            ('Dataの要素数-1','要素数(Data) - 1'),('Nissuの要素数-1','要素数(Nissu) - 1'),
+            ('Akibiの要素数-1','要素数(Akibi) - 1'),('tantouの要素数-1','要素数(tantou) - 1'),
+            ('buinsu = Akibiの要素数','buinsu = 要素数(Akibi)'),
+            ("'i を 0 から 人数-1 まで繰り返す:','｜ bango = Shurui[i] - 1'","'i を 0 から 要素数(Shurui) - 1 まで繰り返す:','｜ bango = Shurui[i] - 1'"),
+            ("'i を 0 から 人数-1 まで繰り返す:','｜ kaishi = max(touchaku[i], uketuke)'","'i を 0 から 要素数(touchaku) - 1 まで繰り返す:','｜ kaishi = max(touchaku[i], uketuke)'"),
+            ('Kaishi = 0を人数分並べた配列','Kaishi = 0を要素数(Touchaku)個並べた配列'),
+            ('Shuryou = 0を人数分並べた配列','Shuryou = 0を要素数(Touchaku)個並べた配列'),
+            ('Machi = 0を人数分並べた配列','Machi = 0を要素数(Touchaku)個並べた配列'),
+            ('i を 1 から 人数-1 まで繰り返す:','i を 1 から 要素数(Touchaku) - 1 まで繰り返す:'),
+            ('{{start}}+1','{{start}} + 1'),('{{n}}-2','{{n}} - 2'),
+            ('i+1 から {{n}}-1','i + 1 から {{n}} - 1'),
+            ('{{outer}}-1','{{outer}} - 1'),('{{inner}}-1','{{inner}} - 1'),
+            ('表示する(工芸品, tantou, Akibi[tantou], Akibi[tantou]+Nissu[kougeihin]-1)','表示する(kougeihin, tantou, Akibi[tantou], Akibi[tantou] + Nissu[kougeihin] - 1)')])
+          PY
+      - name: Commit exact file changes
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add info.html programming.html dncl-lab.html
+          git commit -m "Apply portal and DNCL refinements"
+          git push
